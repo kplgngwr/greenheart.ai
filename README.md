@@ -1,26 +1,25 @@
 # GreenHeart.ai 🌱
 
-An AI-powered agriculture assistant designed to help farmers and gardeners identify plant diseases and recommend optimal crops for their specific conditions.
+An AI-powered agriculture assistant API that helps farmers and gardeners identify plant diseases and recommend optimal crops for their specific conditions.
 
 ## Project Overview
 
-GreenHeart.ai offers two key features available both as a Streamlit web application and as API endpoints:
+GreenHeart.ai offers two key features available as RESTful API endpoints:
 
 1. **Leaf Disease Analyzer** 🔍 - Upload images of plant leaves to:
-   - Detect diseases using computer vision
+   - Detect diseases using computer vision with YOLOv8
    - Get detailed analysis reports about identified diseases
    - Receive treatment recommendations and corrective measures
    - View annotated images with disease identification
 
 2. **Crop Recommendation System** 🌾 - Input soil and environmental data to:
-   - Receive personalized crop recommendations
+   - Receive personalized crop recommendations optimized for Indian agriculture
    - Get insights on optimal growing conditions
    - Maximize yield based on current conditions
-   - Make data-driven planting decisions
+   - Make data-driven planting decisions based on season and local conditions
 
 ## Technology Stack
 
-- **Frontend**: Streamlit
 - **API**: FastAPI
 - **Computer Vision**: OpenCV, Ultralytics YOLOv8
 - **ML/AI**: PyTorch, Google Generative AI (Gemini)
@@ -51,26 +50,14 @@ pip install -r requirements.txt
    - Create a `.env` file in the project root
    - Add your Google API key: `GOOGLE_API_KEY=your_api_key_here`
 
-4. Run the Streamlit application:
-```bash
-streamlit run app.py
-```
-
-5. Run the API server:
+4. Run the API server:
 ```bash
 uvicorn api:app --reload
 ```
 
-## Using the Application
+## API Endpoints
 
-### Streamlit Web Application
-
-1. Navigate to "🌿 Leaf Disease Analyzer" or "🌱 Crop Recommender" in the sidebar
-2. Follow the on-screen instructions to analyze leaves or get crop recommendations
-
-### API Endpoints
-
-#### Leaf Disease Analysis
+### Leaf Disease Analysis
 ```
 POST /api/v1/analyze-leaf
 Content-Type: multipart/form-data
@@ -89,7 +76,7 @@ Response:
 }
 ```
 
-#### Crop Recommendation
+### Crop Recommendation
 ```
 POST /api/v1/recommend-crops
 Content-Type: application/json
@@ -122,14 +109,9 @@ When the API server is running, visit:
 
 ```
 greenheart.ai/
-├── app.py                 # Streamlit application
 ├── api.py                 # FastAPI application
 ├── requirements.txt       # Project dependencies
 ├── .env                   # Environment variables
-├── assets/                # Images and static files
-│   ├── Logo.png
-│   ├── thankyou.png
-│   └── title-greenheart.png
 ├── examples/              # Sample images for testing
 │   ├── dataset-card.jpg
 │   └── test_image.jpg
@@ -137,10 +119,20 @@ greenheart.ai/
 │   └── model.pt           # YOLOv8 trained model
 └── utils/                 # Utility functions
     ├── __init__.py
-    ├── formatting.py      # UI formatting utilities
+    ├── formatting.py      # API formatting utilities
     ├── inference.py       # Disease detection functions
-    └── prompt.py          # AI prompt generation utilities
+    ├── prompt.py          # AI prompt generation utilities
+    └── sensor.py          # Sensor data processing functions
 ```
+
+## Integrating with UIs
+
+This API is designed to be easily integrated with any UI platform:
+
+1. **Web Applications**: Use fetch or axios to make API calls from JavaScript
+2. **Mobile Apps**: Make HTTP requests from your iOS/Android app
+3. **Desktop Applications**: Integrate via HTTP client libraries
+4. **IoT Devices**: Connect sensors directly to the API for real-time analysis
 
 ## Contributing
 
@@ -153,5 +145,5 @@ Contributions to improve GreenHeart.ai are welcome! Please feel free to submit a
 ## Acknowledgments
 
 - Plant disease dataset contributors
-- The Streamlit and PyTorch communities
+- The PyTorch and FastAPI communities
 - Agricultural experts who provided domain knowledge
