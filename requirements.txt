@@ -1,10 +1,14 @@
 numpy
 pandas
 matplotlib
-streamlit
 opencv-python
 scikit-learn
 torch
 google-generativeai
 python-dotenv
 ultralytics
+fastapi
+uvicorn
+python-multipart
+pydantic
+pillow

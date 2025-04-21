@@ -1,13 +1,13 @@
 import streamlit as st
-import numpy as np
+import numpy np
 from utils import *
 import tempfile
 import os
 import cv2
 
 def sidebar_navigation():
-    st.sidebar.image("assets/Logo.png", use_container_width=True)
-    st.sidebar.title("🌾 Agriculture Assistant")
+    st.sidebar.title("🌾 GreenHeart.ai")
+    st.sidebar.title("🌱 Agriculture Assistant")
     page = st.sidebar.selectbox("Navigate to:", ["🌿 Leaf Disease Analyzer", "🌱 Crop Recommender"])
     return page
 

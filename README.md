@@ -4,7 +4,7 @@ An AI-powered agriculture assistant designed to help farmers and gardeners ident
 
 ## Project Overview
 
-GreenHeart.ai is a web application built with Streamlit that offers two key features:
+GreenHeart.ai offers two key features available both as a Streamlit web application and as API endpoints:
 
 1. **Leaf Disease Analyzer** 🔍 - Upload images of plant leaves to:
    - Detect diseases using computer vision
@@ -21,6 +21,7 @@ GreenHeart.ai is a web application built with Streamlit that offers two key feat
 ## Technology Stack
 
 - **Frontend**: Streamlit
+- **API**: FastAPI
 - **Computer Vision**: OpenCV, Ultralytics YOLOv8
 - **ML/AI**: PyTorch, Google Generative AI (Gemini)
 - **Data Processing**: NumPy, Pandas
@@ -50,38 +51,79 @@ pip install -r requirements.txt
    - Create a `.env` file in the project root
    - Add your Google API key: `GOOGLE_API_KEY=your_api_key_here`
 
-4. Run the application:
+4. Run the Streamlit application:
 ```bash
 streamlit run app.py
 ```
 
+5. Run the API server:
+```bash
+uvicorn api:app --reload
+```
+
 ## Using the Application
 
-### Leaf Disease Analyzer
+### Streamlit Web Application
 
-1. Navigate to "🌿 Leaf Disease Analyzer" in the sidebar
-2. Upload an image of a plant leaf
-3. Click "Analyze Leaf"
-4. View the results:
-   - Annotated image showing disease detection
-   - Detailed analysis report with disease information
-   - Treatment recommendations
+1. Navigate to "🌿 Leaf Disease Analyzer" or "🌱 Crop Recommender" in the sidebar
+2. Follow the on-screen instructions to analyze leaves or get crop recommendations
 
-### Crop Recommender
+### API Endpoints
 
-1. Navigate to "🌱 Crop Recommender" in the sidebar
-2. Enter soil and environmental data:
-   - Manually or as an array/list
-   - Include information like nitrogen, phosphorus, potassium levels
-   - Add temperature, soil fertility, and moisture readings
-3. Click "Find Optimal Crops"
-4. Review recommended crops suited for your conditions
+#### Leaf Disease Analysis
+```
+POST /api/v1/analyze-leaf
+Content-Type: multipart/form-data
+{
+  "file": [binary image data]
+}
+```
+
+Response:
+```json
+{
+  "disease_detected": "Leaf Rust",
+  "confidence": 0.95,
+  "analysis": "The leaf shows signs of...",
+  "annotated_image": "[base64 encoded image]"
+}
+```
+
+#### Crop Recommendation
+```
+POST /api/v1/recommend-crops
+Content-Type: application/json
+{
+  "nitrogen": 50,
+  "phosphorus": 50,
+  "potassium": 50,
+  "temperature": 25.0,
+  "soil_fertility": "Medium",
+  "moisture": 60.0,
+  "season": "summer"
+}
+```
+
+Response:
+```json
+{
+  "recommended_crops": ["Rice", "Wheat", "Cotton"],
+  "analysis": "Based on your soil conditions..."
+}
+```
+
+## API Documentation
+
+When the API server is running, visit:
+- Interactive API docs: http://localhost:8000/docs
+- Alternative API docs: http://localhost:8000/redoc
 
 ## Project Structure
 
 ```
 greenheart.ai/
-├── app.py                 # Main Streamlit application
+├── app.py                 # Streamlit application
+├── api.py                 # FastAPI application
 ├── requirements.txt       # Project dependencies
 ├── .env                   # Environment variables
 ├── assets/                # Images and static files

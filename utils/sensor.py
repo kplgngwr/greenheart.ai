@@ -1,4 +1,10 @@
 import random
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def format_sensor_data(sensor_data):
 
@@ -48,3 +54,31 @@ def format_sensor_data(sensor_data):
     5. Soil Fertility: {soil_fertility}
     6. Moisture: {moisture}%
     """
+
+def generate_crop_recommendation(prompt):
+    """
+    Generate crop recommendations based on sensor data using Google's Generative AI
+    """
+    # Configure the generative AI model
+    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+    
+    # Set up the model
+    generation_config = {
+        "temperature": 0.4,
+        "top_p": 1,
+        "top_k": 32,
+        "max_output_tokens": 1024,
+    }
+    
+    # Create the model
+    model = genai.GenerativeModel(
+        model_name="gemini-1.0-pro",
+        generation_config=generation_config
+    )
+    
+    # Generate the response
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error generating crop recommendations: {str(e)}"
