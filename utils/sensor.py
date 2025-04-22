@@ -72,7 +72,7 @@ def generate_crop_recommendation(prompt):
     
     # Create the model
     model = genai.GenerativeModel(
-        model_name="gemini-1.0-pro",
+        model_name="gemini-1.5-pro",
         generation_config=generation_config
     )
     
