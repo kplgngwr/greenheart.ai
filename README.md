@@ -4,146 +4,140 @@ An AI-powered agriculture assistant API that helps farmers and gardeners identif
 
 ## Project Overview
 
-GreenHeart.ai offers two key features available as RESTful API endpoints:
+GreenHeart.ai provides two main features exposed as REST endpoints:
 
-1. **Leaf Disease Analyzer** 🔍 - Upload images of plant leaves to:
-   - Detect diseases using computer vision with YOLOv8
-   - Get detailed analysis reports about identified diseases
-   - Receive treatment recommendations and corrective measures
-   - View annotated images with disease identification
+- Leaf Disease Analyzer — analyze a leaf image (YOLOv8/OpenCV) and return detected issues, an annotated image, and recommendations.
+- Crop Recommendation System — take soil and environmental sensor data and return personalized crop recommendations (uses Google Generative AI).
 
-2. **Crop Recommendation System** 🌾 - Input soil and environmental data to:
-   - Receive personalized crop recommendations optimized for Indian agriculture
-   - Get insights on optimal growing conditions
-   - Maximize yield based on current conditions
-   - Make data-driven planting decisions based on season and local conditions
+This repository contains a FastAPI application (`app.py`) and utility modules in `utils/` that perform inference, prompt building, and sensor-data formatting.
 
-## Technology Stack
+## Quickstart — run locally (Windows)
 
-- **API**: FastAPI
-- **Computer Vision**: OpenCV, Ultralytics YOLOv8
-- **ML/AI**: PyTorch, Google Generative AI (Gemini)
-- **Data Processing**: NumPy, Pandas
-- **Image Processing**: PIL, OpenCV
+These steps get the API running on your Windows machine (cmd.exe / PowerShell). The project already includes a virtual environment under the `greenheart/` folder in this repo; you can either use that or create a fresh one.
 
-## Installation
+1) (Optional) Create a new venv (recommended) and activate it (cmd):
 
-### Prerequisites
-
-- Python 3.10+
-- pip package manager
-
-### Setup
-
-1. Clone the repository:
-```bash
-git clone https://github.com/kplgngwr/greenheart.ai.git
-cd greenheart.ai
+```bat
+python -m venv .venv
+.\.venv\Scripts\activate
 ```
 
-2. Install dependencies:
-```bash
+PowerShell activate:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+If you want to use the included virtualenv inside `greenheart/`, activate:
+
+```bat
+.\greenheart\Scripts\activate
+```
+
+2) Install Python dependencies (from repo root):
+
+```bat
 pip install -r requirements.txt
 ```
 
-3. Set up Google Generative AI API:
-   - Create a `.env` file in the project root
-   - Add your Google API key: `GOOGLE_API_KEY=your_api_key_here`
+Note: Some dependencies (torch, ultralytics) are large. If you have a GPU-enabled system you may want to install a CUDA-enabled PyTorch wheel per PyTorch's instructions.
 
-4. Run the API server:
+3) Create a `.env` with your Google Generative API key:
+
+```text
+GOOGLE_API_KEY=your_api_key_here
+```
+
+Important: do not commit your `.env` or secrets to git. Rotate the key if it was accidentally exposed.
+
+4) Run the server (development):
+
+```bat
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The interactive documentation will be available at: http://localhost:8000/docs
+
+If you prefer the Docker route, see the Docker section below.
+
+## Endpoints (current)
+
+The running API exposes these main endpoints:
+
+- GET / — basic welcome
+- GET /health — health check
+- POST /api/v1/analyze-leaf — upload a leaf image (multipart/form-data) and receive analysis and an annotated image (base64)
+- POST /api/v1/recommend-crops — send sensor data (JSON) and receive crop recommendations
+- GET /favicon.ico — favicon route (present but minimal)
+
+Example curl (Windows cmd.exe):
+
+```bat
+curl -X GET "http://localhost:8000/health" -H "accept: application/json"
+```
+
+Example analyze (replace `<image.jpg>` with a path):
+
+```bat
+curl -X POST "http://localhost:8000/api/v1/analyze-leaf" -H "accept: application/json" -H "Content-Type: multipart/form-data" -F "file=@<image.jpg>"
+```
+
+Example recommend-crops payload (save as `payload.json` and post):
+
+```bat
+curl -X POST "http://localhost:8000/api/v1/recommend-crops" -H "Content-Type: application/json" -d @payload.json
+```
+
+## Docker
+
+The `Dockerfile` builds a container and starts Uvicorn on port 8080 by default. Build and run (Linux/macOS or Docker Desktop on Windows):
+
 ```bash
-uvicorn api:app --reload
+docker build -t greenheart.ai:latest .
+docker run -p 8080:8080 --env-file .env greenheart.ai:latest
 ```
 
-## API Endpoints
+When running in Docker the server listens on port 8080 (as defined in the `Dockerfile`).
 
-### Leaf Disease Analysis
-```
-POST /api/v1/analyze-leaf
-Content-Type: multipart/form-data
-{
-  "file": [binary image data]
-}
-```
+## Using the included `cors_test.html`
 
-Response:
-```json
-{
-  "disease_detected": "Leaf Rust",
-  "confidence": 0.95,
-  "analysis": "The leaf shows signs of...",
-  "annotated_image": "[base64 encoded image]"
-}
-```
+Open `cors_test.html` in your browser and enter your API URL (e.g. `http://localhost:8000`) when prompted. It has three quick tests for health, crop recommendation, and leaf analysis.
 
-### Crop Recommendation
-```
-POST /api/v1/recommend-crops
-Content-Type: application/json
-{
-  "nitrogen": 50,
-  "phosphorus": 50,
-  "potassium": 50,
-  "temperature": 25.0,
-  "soil_fertility": "Medium",
-  "moisture": 60.0,
-  "season": "summer"
-}
-```
+## Files of interest
 
-Response:
-```json
-{
-  "recommended_crops": ["Rice", "Wheat", "Cotton"],
-  "analysis": "Based on your soil conditions..."
-}
-```
+- `app.py` — main FastAPI application (this is the module you should point Uvicorn at: `app:app`).
+- `requirements.txt` — Python dependencies.
+- `models/model.pt` — trained YOLOv8 model used by `utils/inference.py` (keep this file present if you want local inference).
+- `utils/` — utility modules (inference, prompt building, sensor formatting, response formatting).
 
-## API Documentation
+## Environment variables
 
-When the API server is running, visit:
-- Interactive API docs: http://localhost:8000/docs
-- Alternative API docs: http://localhost:8000/redoc
+- `GOOGLE_API_KEY` — required by the Google Generative AI calls. Put it in `.env` or your environment.
 
-## Project Structure
+## Troubleshooting
 
-```
-greenheart.ai/
-├── api.py                 # FastAPI application
-├── requirements.txt       # Project dependencies
-├── .env                   # Environment variables
-├── examples/              # Sample images for testing
-│   ├── dataset-card.jpg
-│   └── test_image.jpg
-├── models/                # Machine learning models
-│   └── model.pt           # YOLOv8 trained model
-└── utils/                 # Utility functions
-    ├── __init__.py
-    ├── formatting.py      # API formatting utilities
-    ├── inference.py       # Disease detection functions
-    ├── prompt.py          # AI prompt generation utilities
-    └── sensor.py          # Sensor data processing functions
-```
+- ModuleNotFoundError: No module named 'fastapi'
+  - Activate the appropriate virtual environment and run: `pip install -r requirements.txt`.
 
-## Integrating with UIs
+- Uvicorn reload/reloader issues on Windows
+  - If the auto-reloader causes issues, try running without `--reload` or run via: `python -m uvicorn app:app --host 0.0.0.0 --port 8000`.
 
-This API is designed to be easily integrated with any UI platform:
+- GPU / Torch
+  - If you rely on CUDA/GPU for `torch`, install the appropriate wheel for your CUDA version before installing the rest of `requirements.txt`.
 
-1. **Web Applications**: Use fetch or axios to make API calls from JavaScript
-2. **Mobile Apps**: Make HTTP requests from your iOS/Android app
-3. **Desktop Applications**: Integrate via HTTP client libraries
-4. **IoT Devices**: Connect sensors directly to the API for real-time analysis
+## Security note
+
+The `.env` in this repository currently contains a Google API key. If that key is real, rotate it immediately and remove the key from any shared or public place. Keep `.env` in `.gitignore` (already present).
 
 ## Contributing
 
-Contributions to improve GreenHeart.ai are welcome! Please feel free to submit a pull request.
+Contributions welcome — open an issue or submit a pull request. For larger changes, please open an issue first to discuss design and testing strategy.
 
 ## License
 
-[MIT License](LICENSE)
+This project is released under the MIT License. See `LICENSE` for details.
 
 ## Acknowledgments
 
-- Plant disease dataset contributors
-- The PyTorch and FastAPI communities
-- Agricultural experts who provided domain knowledge
+- Dataset contributors
+- PyTorch, FastAPI, Ultralytics, and Google Generative AI communities

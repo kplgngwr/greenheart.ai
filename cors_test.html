@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenHeart.ai API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        input[type=file] {
+            margin: 10px 0;
+        }
+        .input-section, .output-section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        h2 {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>GreenHeart.ai API Test</h1>
+    
+    <div class="input-section">
+        <h2>1. Health Check</h2>
+        <button onclick="testHealth()">Test /health Endpoint</button>
+        <pre id="healthOutput">Results will appear here...</pre>
+    </div>
+
+    <div class="input-section">
+        <h2>2. Crop Recommendation</h2>
+        <p>Test the /api/v1/recommend-crops endpoint with sample data:</p>
+        <button onclick="testCropRecommendation()">Test Crop Recommendation</button>
+        <pre id="cropOutput">Results will appear here...</pre>
+    </div>
+
+    <div class="input-section">
+        <h2>3. Leaf Analysis</h2>
+        <p>Upload an image for leaf disease analysis:</p>
+        <input type="file" id="leafImage" accept="image/jpeg, image/png">
+        <button onclick="testLeafAnalysis()">Analyze Leaf</button>
+        <pre id="leafOutput">Results will appear here...</pre>
+        <div id="imageOutput"></div>
+    </div>
+
+    <script>
+        // Replace with your actual API URL
+        const API_URL = prompt("Enter your API URL (with https:// or http://)", "https://three-things-strive.loca.lt");
+        
+        // Test the health endpoint
+        async function testHealth() {
+            const output = document.getElementById('healthOutput');
+            output.textContent = "Testing health endpoint...";
+            
+            try {
+                const response = await fetch(`${API_URL}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    mode: 'cors'
+                });
+                
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                console.error('Health check error:', error);
+            }
+        }
+        
+        // Test the crop recommendation endpoint
+        async function testCropRecommendation() {
+            const output = document.getElementById('cropOutput');
+            output.textContent = "Sending crop recommendation request...";
+            
+            const sensorData = {
+                "nitrogen": 50,
+                "phosphorus": 30,
+                "potassium": 40,
+                "temperature": 25.0,
+                "soil_fertility": "high",
+                "moisture": 35.0,
+                "season": "summer",
+                "ndvi": 0.68,
+                "evi": 0.45,
+                "soil_ph": 6.5,
+                "rainfall_last_30_days": 120,
+                "groundwater_depth": 15.0,
+                "slope_degree": 5,
+                "market_price_per_quintal": 3500,
+                "crop_history": {
+                    "previous_crop": "wheat",
+                    "yield_previous_season": 3.5
+                },
+                "region": "Punjab",
+                "district": "Mohali",
+                "irrigation_type": "canal",
+                "expected_harvest_days": 110
+            };
+            
+            try {
+                console.log(`Sending request to ${API_URL}/api/v1/recommend-crops`);
+                const response = await fetch(`${API_URL}/api/v1/recommend-crops`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    mode: 'cors',
+                    body: JSON.stringify(sensorData)
+                });
+                
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                output.textContent = `Error: ${error.message}\n\nThis could be due to CORS restrictions or network issues.\nCheck console for more details.`;
+                console.error('Crop recommendation error:', error);
+            }
+        }
+        
+        // Test the leaf analysis endpoint
+        async function testLeafAnalysis() {
+            const output = document.getElementById('leafOutput');
+            const imageOutput = document.getElementById('imageOutput');
+            const fileInput = document.getElementById('leafImage');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                output.textContent = "Please select an image file first.";
+                return;
+            }
+            
+            output.textContent = "Uploading and analyzing leaf image...";
+            imageOutput.innerHTML = "";
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/analyze-leaf`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Display the response data
+                output.textContent = JSON.stringify({
+                    disease_detected: data.disease_detected,
+                    confidence: data.confidence,
+                    analysis: data.analysis
+                }, null, 2);
+                
+                // Display the annotated image
+                if (data.annotated_image) {
+                    const img = document.createElement('img');
+                    img.src = `data:image/jpeg;base64,${data.annotated_image}`;
+                    img.style.maxWidth = '100%';
+                    img.style.marginTop = '20px';
+                    imageOutput.appendChild(img);
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}\n\nThis could be due to CORS restrictions or network issues.\nCheck console for more details.`;
+                console.error('Leaf analysis error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

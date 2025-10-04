@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from typing import List, Union, Optional
 import numpy as np
@@ -12,6 +12,7 @@ from PIL import Image
 import tempfile
 import base64
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 # Import our utility functions
 from utils.inference import inference
@@ -28,13 +29,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
+# Configure CORS with more explicit settings
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly list allowed methods
     allow_headers=["*"],  # Allows all headers
+    expose_headers=["Content-Type", "X-Content-Type-Options"],
+    max_age=600,  # Caches preflight requests for 10 minutes
 )
 
 # Models for request/response validation
@@ -46,6 +49,18 @@ class SensorData(BaseModel):
     soil_fertility: str
     moisture: float
     season: str
+    ndvi: Optional[float] = None
+    evi: Optional[float] = None
+    soil_ph: Optional[float] = None
+    rainfall_last_30_days: Optional[float] = None
+    groundwater_depth: Optional[float] = None
+    slope_degree: Optional[float] = None
+    market_price_per_quintal: Optional[float] = None
+    crop_history: Optional[dict] = None
+    region: Optional[str] = None
+    district: Optional[str] = None
+    irrigation_type: Optional[str] = None
+    expected_harvest_days: Optional[int] = None
 
 class LeafAnalysisResponse(BaseModel):
     disease_detected: str
@@ -53,13 +68,13 @@ class LeafAnalysisResponse(BaseModel):
     analysis: str
     annotated_image: str  # base64 encoded image
 
-class CropRecommendationResponse(BaseModel):
-    recommended_crops: List[str]
-    analysis: str
-
 @app.get("/")
 def read_root():
     return {"message": "Welcome to GreenHeart.ai API", "endpoints": ["/analyze-leaf", "/recommend-crops"]}
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 @app.post("/api/v1/analyze-leaf", response_model=dict)
 async def analyze_leaf(file: UploadFile = File(...)):
@@ -103,11 +118,59 @@ async def analyze_leaf(file: UploadFile = File(...)):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during analysis: {str(e)}")
-    
     finally:
-        # Clean up temporary file
-        if os.path.exists(tmp_file_path):
-            os.unlink(tmp_file_path)
+        # Ensure temporary file is removed
+        try:
+            if 'tmp_file_path' in locals() and os.path.exists(tmp_file_path):
+                os.unlink(tmp_file_path)
+        except Exception:
+            pass
+
+
+@app.get("/api/v1/models")
+def list_generative_models():
+    """List available Google Generative AI (Gemini) models for this API key/project.
+
+    Returns a small JSON list with model names and (if available) supported methods.
+    """
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="GOOGLE_API_KEY environment variable is not set")
+
+    try:
+        genai.configure(api_key=api_key)
+
+        # Try the common list method. Different library versions expose different helpers.
+        if hasattr(genai, "list_models"):
+            raw = genai.list_models()
+        elif hasattr(genai, "Models") and hasattr(genai.Models, "list"):
+            raw = genai.Models.list()
+        else:
+            # Try accessing a client attribute as a last resort
+            raw = None
+
+        models_list = []
+        if raw is None:
+            raise RuntimeError("ListModels method not found in installed google-generativeai package")
+
+        # Normalize different return shapes
+        if isinstance(raw, dict):
+            candidates = raw.get("models") or raw.get("model") or raw.get("items") or []
+        else:
+            candidates = raw
+
+        for m in candidates:
+            try:
+                name = getattr(m, "name", None) or getattr(m, "id", None) or str(m)
+                supported = getattr(m, "supported_methods", None) or getattr(m, "supportedMethods", None)
+                models_list.append({"name": name, "supported_methods": supported})
+            except Exception:
+                models_list.append({"raw": str(m)})
+
+        return {"models": models_list}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not list models: {e}")
 
 @app.post("/api/v1/recommend-crops", response_model=dict)
 async def recommend_crops(sensor_data: SensorData):
@@ -115,41 +178,26 @@ async def recommend_crops(sensor_data: SensorData):
     Recommend crops based on sensor data and environmental conditions
     """
     try:
-        # Format the sensor data for analysis
-        data_array = [
-            sensor_data.nitrogen, 
-            sensor_data.phosphorus, 
-            sensor_data.potassium,
-            sensor_data.temperature,
-            sensor_data.soil_fertility,
-            sensor_data.moisture
-        ]
-        
-        formatted_data = format_sensor_data(data_array)
-        
-        # Build prompt for crop recommendation
-        prompt = f"""
-        You are an agricultural expert in India. Based on the following detailed soil and environmental sensor data, recommend crops that are most suitable for cultivation in this region. 
-        {formatted_data}
-        The season is {sensor_data.season} in India.
-        Consider the specific growing conditions in India, and provide a list of crops that will produce high yields with minimal maintenance during the current season. Be certain and specific in your recommendations based on the sensor data provided, and ensure that the crops suggested are well-suited for Indian agriculture.
-        Your response should not be ambiguous. Do not say things like 'I am not sure' or 'I cannot be certain'. Instead, provide clear, confident recommendations for the best crops to grow in these conditions.
-        """
-        
-        # Generate crop recommendations
+        data_dict = sensor_data.dict()
+        # Build the prompt using the prompt builder
+        from utils.prompt import build_crop_recommendation_prompt, generate_crop_recommendation
+        prompt = build_crop_recommendation_prompt(data_dict)
+        # Generate crop recommendations using Gemini (no image required)
         analysis = generate_crop_recommendation(prompt)
-        
-        # Extract recommended crops (this is a simplification - would need more parsing)
-        # For a real implementation, you might want to parse the analysis to extract a specific list
-        recommended_crops = ["Rice", "Wheat", "Cotton"]  # Placeholder
-        
         return {
-            "recommended_crops": recommended_crops,
             "analysis": analysis
         }
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating recommendations: {str(e)}")
 
+@app.get("/favicon.ico")
+async def get_favicon():
+    """Return an empty response for favicon requests"""
+    return Response(content=b"", media_type="image/x-icon")
+
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
+    # Ensure uvicorn is only imported when running the module directly
+    import uvicorn
+
+    # Start the app defined in this file
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
